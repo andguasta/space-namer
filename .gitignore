@@ -1,0 +1,15 @@
+.build/
+.swiftpm/
+Package.resolved
+
+build/
+
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+
+.DS_Store
+
+# Local icon drawing script; the finished icon is in assets/
+scripts/make_icon.swift

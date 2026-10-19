@@ -14,6 +14,8 @@ A small menu bar app that works with SIP enabled.
 
 </div>
 
+I built SpaceNamer for my own Mac to keep track of my Spaces, and I use it every day. I'm sharing it in case someone else finds it useful. It's a personal tool, so expect rough edges.
+
 ## Features
 
 - The menu bar shows the current Space's name and emoji.
