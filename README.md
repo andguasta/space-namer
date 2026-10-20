@@ -21,7 +21,7 @@ I built SpaceNamer for my own Mac to keep track of my Spaces, and I use it every
 - The menu bar shows the current Space's name and emoji.
 - A quick switcher lets you search for any Space, jump to it, or rename it from one panel.
 - When you change Space, its name appears briefly in the middle of the screen.
-- You can send the focused window to another Space from the menu bar.
+- You can send the focused window to another Space from the menu bar or with its own switcher.
 - Each Space gets a soft gradient wallpaper. The color is assigned automatically, and you can change it.
 - Names appear on the desktop of every display.
 
@@ -29,7 +29,8 @@ I built SpaceNamer for my own Mac to keep track of my Spaces, and I use it every
 
 | Shortcut | Action |
 | --- | --- |
-| <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>Space</kbd> | Open the switcher |
+| <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>Space</kbd> | Open the switcher (type a Space's number to go there) |
+| <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Space</kbd> | Send the focused window to a Space |
 | <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>R</kbd> | Rename the current Space |
 | <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>E</kbd> | Choose an emoji and color for the current Space |
 

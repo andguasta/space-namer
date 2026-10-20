@@ -26,10 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar.onSwitch = { [weak self] in self?.go(to: $0) }
         statusBar.onShowSwitcher = { [weak self] mode in self?.switcher.show(mode) }
         statusBar.onSetUpShortcuts = { [weak self] in self?.setUpShortcuts() }
-        statusBar.onMoveWindow = { [weak self] window, space in
-            guard let self else { return }
-            self.report(WindowMover.move(window, to: space, manager: self.manager)) { self.statusBar.onMoveWindow?(window, space) }
-        }
+        statusBar.onMoveWindow = { [weak self] in self?.move($0, to: $1) }
+        switcher.onMoveWindow = { [weak self] in self?.move($0, to: $1) }
 
         let mods = controlKey | optionKey
         hotKeys = [
@@ -39,6 +37,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             HotKey(keyCode: kVK_ANSI_R, modifiers: mods) { [weak self] in self?.switcher.show(.renameCurrent) },
             HotKey(keyCode: kVK_ANSI_E, modifiers: mods) { [weak self] in self?.switcher.show(.emojiForCurrent) },
+            HotKey(keyCode: kVK_Space, modifiers: mods | cmdKey) { [weak self] in
+                guard let self else { return }
+                self.switcher.isVisible ? self.switcher.hide() : self.switcher.show(.moveWindow)
+            },
         ]
 
         if !AXIsProcessTrusted() {
@@ -50,6 +52,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let error = SpaceSwitcher.go(to: space, manager: manager)
         if error == nil, !space.isCurrent { hud.announce(space) }
         report(error) { self.go(to: space) }
+    }
+
+    private func move(_ window: WindowMover.Target, to space: Space) {
+        report(WindowMover.move(window, to: space, manager: manager)) { self.move(window, to: space) }
     }
 
     /// Explains a failed switch; `retry` runs after the shortcuts have been set up.

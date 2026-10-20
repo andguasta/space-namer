@@ -14,6 +14,7 @@ final class SwitcherModel: ObservableObject {
     @Published var emojiKey: String?       // space whose emoji is being picked
     @Published var emojiText = ""
     @Published var focusToken = 0
+    @Published var movingAppName: String?  // set while choosing a space to send a window to
     var onSwitch: ((Space) -> Void)?
     private var cancellable: AnyCancellable?
 
@@ -101,7 +102,7 @@ struct SwitcherView: View {
 
     private var grid: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("Search spaces…", text: $model.query)
+            TextField(model.movingAppName.map { "Move “\($0)” window to…" } ?? "Search spaces…", text: $model.query)
                 .textFieldStyle(.plain)
                 .font(.title2)
                 .focused($focus, equals: .search)
@@ -116,7 +117,8 @@ struct SwitcherView: View {
                 }
                 .padding(2)
             }
-            Text("↩ go   ⇥ or ⌘E rename   ⌘I emoji   ⌘1–9 jump   esc close")
+            Text(model.movingAppName == nil ? "↩ go   1–9 jump   ⇥ or ⌘E rename   ⌘I emoji   esc close"
+                                            : "↩ move   1–9 move to space   ⇥ or ⌘E rename   ⌘I emoji   esc close")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -186,7 +188,11 @@ final class SwitcherController: NSObject, NSWindowDelegate {
     private let model: SwitcherModel
     private let panel: SwitcherPanel
     private var monitor: Any?
+    private var windowTarget: WindowMover.Target?
+    private var typedNumber = ""
+    private var pendingNumber: DispatchWorkItem?
     var onSwitch: ((Space) -> Void)?
+    var onMoveWindow: ((WindowMover.Target, Space) -> Void)?
 
     init(manager: SpaceManager) {
         self.manager = manager
@@ -226,18 +232,26 @@ final class SwitcherController: NSObject, NSWindowDelegate {
         }
     }
 
-    enum Mode { case browse, renameCurrent, emojiForCurrent }
+    enum Mode { case browse, renameCurrent, emojiForCurrent, moveWindow }
 
     var isVisible: Bool { panel.isVisible }
 
     func show(_ mode: Mode = .browse) {
+        // Taken before showing the panel, which never becomes the frontmost app.
+        windowTarget = mode == .moveWindow ? WindowMover.focusedWindow() : nil
+        if mode == .moveWindow, windowTarget == nil {
+            NSSound.beep()
+            return
+        }
+        model.movingAppName = windowTarget?.appName
+        resetTypedNumber()
         manager.refresh()
         model.editingKey = nil
         model.emojiKey = nil
         model.query = ""
         model.selection = manager.spaces.firstIndex(where: \.isCurrent) ?? 0
         switch mode {
-        case .browse: break
+        case .browse, .moveWindow: break
         case .renameCurrent: model.beginRename(manager.current)
         case .emojiForCurrent: model.beginEmoji(manager.current)
         }
@@ -253,6 +267,7 @@ final class SwitcherController: NSObject, NSWindowDelegate {
     }
 
     func hide() {
+        resetTypedNumber()
         model.editingKey = nil
         model.emojiKey = nil
         panel.orderOut(nil)
@@ -261,8 +276,45 @@ final class SwitcherController: NSObject, NSWindowDelegate {
     func windowDidResignKey(_ notification: Notification) { hide() }
 
     private func finish(with space: Space) {
+        let window = windowTarget
         hide()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.onSwitch?(space) }
+        if let window {
+            guard !space.isCurrent else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.onMoveWindow?(window, space) }
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.onSwitch?(space) }
+        }
+    }
+
+    /// Typing a space's number goes there without ↩. With 10+ spaces, a digit that could
+    /// start a longer number waits briefly for the next one.
+    private func type(digit: String) {
+        pendingNumber?.cancel()
+        typedNumber += digit
+        let numbers = manager.spaces.map { String($0.number) }
+        let exact = manager.spaces.first { String($0.number) == typedNumber }
+        let longer = numbers.contains { $0.count > typedNumber.count && $0.hasPrefix(typedNumber) }
+        if let exact, !longer {
+            finish(with: exact)
+        } else if !longer {
+            typedNumber = ""
+            NSSound.beep()
+        } else {
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                let space = self.manager.spaces.first { String($0.number) == self.typedNumber }
+                self.typedNumber = ""
+                if let space { self.finish(with: space) }
+            }
+            pendingNumber = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
+        }
+    }
+
+    private func resetTypedNumber() {
+        pendingNumber?.cancel()
+        pendingNumber = nil
+        typedNumber = ""
     }
 
     private func handle(_ event: NSEvent) -> Bool {
@@ -290,6 +342,11 @@ final class SwitcherController: NSObject, NSWindowDelegate {
         case kVK_UpArrow where !editing: model.move(-SwitcherModel.columns); return true
         case kVK_DownArrow where !editing: model.move(SwitcherModel.columns); return true
         default: break
+        }
+        let plain = event.modifierFlags.intersection([.command, .control, .option]).isEmpty
+        if plain, !editing, let chars = event.charactersIgnoringModifiers, chars.count == 1, chars.allSatisfy(\.isNumber) {
+            type(digit: chars)
+            return true
         }
         guard command, !editing, let chars = event.charactersIgnoringModifiers else { return false }
         if chars == "e" {
