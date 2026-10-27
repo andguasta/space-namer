@@ -8,10 +8,6 @@ Give your macOS Spaces names, emoji and colors.
 
 A small menu bar app that works with SIP enabled.
 
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-C65A3E?style=flat-square&logo=apple&logoColor=white)
-![Swift](https://img.shields.io/badge/Swift-5.9-F1E6D0?style=flat-square&logo=swift&logoColor=C65A3E)
-![SIP friendly](https://img.shields.io/badge/SIP-stays%20on-C65A3E?style=flat-square)
-
 </div>
 
 I built SpaceNamer for my own Mac to keep track of my Spaces, and I use it every day. I'm sharing it in case someone else finds it useful. It's a personal tool, so expect rough edges.
